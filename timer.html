@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Timer de Estudos</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; background: #f5f5f5; }
+  .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  label { display: block; margin-top: 12px; font-weight: 600; font-size: 14px; }
+  input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+  #display { font-size: 56px; font-weight: bold; text-align: center; margin: 20px 0; font-variant-numeric: tabular-nums; color: #222; }
+  .btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  button { padding: 10px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; }
+  #start { background: #22c55e; color: white; }
+  #pause { background: #f59e0b; color: white; }
+  #stop  { background: #ef4444; color: white; }
+  #save  { background: #3b82f6; color: white; width: 100%; margin-top: 16px; padding: 12px; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  small { color: #666; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>⏱️ Timer de Estudos</h2>
+
+  <label>Data</label>
+  <input type="date" id="data">
+
+  <label>Matéria</label>
+  <input type="text" id="materia" placeholder="English, Matemática...">
+
+  <label>Atividade</label>
+  <input type="text" id="atividade" placeholder="listening, exercícios...">
+
+  <label>Minutos</label>
+  <input type="number" id="minutos" min="0" placeholder="0">
+
+  <label>Anotações</label>
+  <textarea id="notas" rows="3" placeholder="O que estudou..."></textarea>
+
+  <div id="display">00:00:00</div>
+
+  <div class="btns">
+    <button id="start">▶ Iniciar</button>
+    <button id="pause" disabled>⏸ Pausar</button>
+    <button id="stop" disabled>⏹ Parar</button>
+  </div>
+
+  <button id="save">💾 Salvar sessão (baixar CSV)</button>
+  <small>O CSV é baixado na pasta Downloads. Abra no Excel e copie/cole na sua planilha.</small>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  let segundos = 0, interval = null, rodando = false;
+
+  // Data de hoje por padrão
+  $('data').valueAsDate = new Date();
+
+  function fmt(s) {
+    const h = String(Math.floor(s/3600)).padStart(2,'0');
+    const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+    const ss = String(s%60).padStart(2,'0');
+    return `${h}:${m}:${ss}`;
+  }
+
+  function atualizarDisplay() {
+    $('display').textContent = fmt(segundos);
+    // Atualiza campo minutos automaticamente (arredondado)
+    $('minutos').value = Math.round(segundos/60);
+  }
+
+  $('start').onclick = () => {
+    if (rodando) return;
+    rodando = true;
+    $('start').disabled = true;
+    $('pause').disabled = false;
+    $('stop').disabled = false;
+    interval = setInterval(() => { segundos++; atualizarDisplay(); }, 1000);
+  };
+
+  $('pause').onclick = () => {
+    if (rodando) {
+      clearInterval(interval);
+      rodando = false;
+      $('pause').textContent = '▶ Continuar';
+    } else {
+      rodando = true;
+      interval = setInterval(() => { segundos++; atualizarDisplay(); }, 1000);
+      $('pause').textContent = '⏸ Pausar';
+    }
+  };
+
+  $('stop').onclick = () => {
+    clearInterval(interval);
+    rodando = false;
+    $('start').disabled = false;
+    $('pause').disabled = true;
+    $('stop').disabled = true;
+    $('pause').textContent = '⏸ Pausar';
+  };
+
+  $('save').onclick = () => {
+    const data = $('data').value;
+    const materia = $('materia').value.trim();
+    const atividade = $('atividade').value.trim();
+    const minutos = $('minutos').value || 0;
+    const notas = $('notas').value.trim().replace(/"/g,'""').replace(/\n/g,' ');
+
+    if (!materia) { alert('Preencha a Matéria!'); return; }
+
+    // Formato de data BR
+    const [y,m,d] = data.split('-');
+    const dataBR = `${d}/${m}/${y}`;
+
+    const linha = `"${dataBR}","${materia}","${atividade}","${minutos} min","${notas}"\n`;
+    const csv = 'Data,Matéria,Atividade,Minutos,Anotações\n' + linha;
+
+    // Download
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `sessao_${dataBR.replace(/\//g,'-')}_${materia}.csv`;
+    a.click();
+
+    // Reset timer
+    clearInterval(interval);
+    segundos = 0;
+    rodando = false;
+    atualizarDisplay();
+    $('start').disabled = false;
+    $('pause').disabled = true;
+    $('stop').disabled = true;
+    $('notas').value = '';
+    $('atividade').value = '';
+  };
+</script>
+</body>
+</html>
